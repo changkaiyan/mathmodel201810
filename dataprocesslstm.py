@@ -8,7 +8,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error
 import numpy as np
 look_back=2
-epochs=1000
+epochs=10
 batch_size=20
 scaler_x = MinMaxScaler()
 scaler_y=MinMaxScaler()
@@ -48,7 +48,7 @@ plt.legend('train')
 plt.plot(history.history['val_loss'], label='test')
 plt.legend('validation')
 plt.show()
-plt.savefig('损失')
+plt.savefig('损失1-10')
 
 
 
