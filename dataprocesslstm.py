@@ -3,6 +3,7 @@ from keras.layers import Dense, Dropout, Activation
 from keras.layers import Embedding
 from keras.layers import LSTM
 from pandas import  DataFrame
+from pandas import read_csv
 def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
 	n_vars = 1 if type(data) is list else data.shape[1]
 	df = DataFrame(data)
@@ -23,7 +24,7 @@ def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
 	agg.columns = names
 	return agg
 # load dataset
-dataset = read_csv('pollution.csv', header=0, index_col=0)
+dataset = read_csv('datanoraw.csv', header=0, index_col=0)
 values = dataset.values
 # integer encode direction
 encoder = LabelEncoder()
