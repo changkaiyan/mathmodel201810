@@ -1,54 +1,55 @@
-from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation
-from keras.layers import Embedding
-from keras.layers import LSTM
-from pandas import  DataFrame
+from matplotlib import pyplot as plt
 from pandas import read_csv
-def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
-	n_vars = 1 if type(data) is list else data.shape[1]
-	df = DataFrame(data)
-	cols, names = list(), list()
-	# input sequence (t-n, ... t-1)
-	for i in range(n_in, 0, -1):
-		cols.append(df.shift(i))
-		names += [('var%d(t-%d)' % (j+1, i)) for j in range(n_vars)]
-	# forecast sequence (t, t+1, ... t+n)
-	for i in range(0, n_out):
-		cols.append(df.shift(-i))
-		if i == 0:
-			names += [('var%d(t)' % (j+1)) for j in range(n_vars)]
-		else:
-			names += [('var%d(t+%d)' % (j+1, i)) for j in range(n_vars)]
-	# put it all together
-	agg = concat(cols, axis=1)
-	agg.columns = names
-	return agg
-# load dataset
-dataset = read_csv('datanoraw.csv', header=0, index_col=0)
-values = dataset.values
-# integer encode direction
-encoder = LabelEncoder()
-values[:,4] = encoder.fit_transform(values[:,4])
-# ensure all data is float
-values = values.astype('float32')
-# normalize features
-scaler = MinMaxScaler(feature_range=(0, 1))
-scaled = scaler.fit_transform(values)
-# frame as supervised learning
-reframed = series_to_supervised(scaled, 1, 1)
-# drop columns we don't want to predict
-reframed.drop(reframed.columns[[9,10,11,12,13,14,15]], axis=1, inplace=True)
-print(reframed.head())
+import math
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.layers import LSTM
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error
+import numpy as np
+look_back=2
+epochs=1000
+batch_size=20
+scaler_x = MinMaxScaler()
+scaler_y=MinMaxScaler()
+
+def create_dataset(dataset):
+    dataX, dataY = [],[]
+    global look_back
+    for i in range(len(dataset) - look_back - 1):
+        x= dataset[i:i+look_back, :dataset.shape[1]-1]
+        dataX.append(x)
+        y = dataset[i:i+look_back, dataset.shape[1]-1:dataset.shape[1]]
+        dataY.append(y)
+    dataX=np.reshape(np.array(dataX),((len(dataset) - look_back - 1),look_back,dataset.shape[1]-1))
+    dataY = np.reshape(np.array(dataY), ((len(dataset) - look_back - 1),look_back,1))
+    return dataX, dataY
+
+#读入数据并归一化并划分数据
+data_set = read_csv('datanoraw.csv', header=0, index_col=0)
+data_set=data_set.values.astype('float32')
+data=data_set
+scaler=MinMaxScaler()
+Train_x = scaler_x.fit_transform(data_set[:,:data_set.shape[1]-1])
+Train_y = scaler_y.fit_transform(data_set[:,data_set.shape[1]-1:data_set.shape[1]])
+data_set=np.hstack((Train_x,Train_y))
+train = data_set[0:, :]
+X_train, y_train = create_dataset(train)
+#X_train = np.reshape(X_train, (X_train.shape[0], look_back, X_train.shape[1]))
 model = Sequential()
-model.add(Embedding(max_features, 256, input_length=maxlen))
-model.add(LSTM(output_dim=128, activation='tanh', inner_activation='hard_sigmoid',return_sequences=True))
-model.add(Dropout(0.5))
-model.add(Dense(1))
-model.add(Activation('tanh'))
+model.add(LSTM(units=4, input_shape=(look_back, data_set.shape[1]-1),return_sequences=True))
+model.add(Dense(units=1))
+model.compile(loss='mean_squared_error', optimizer='adam')
 
-model.compile(loss='binary_crossentropy',
-              optimizer='rmsprop',
-              metrics=['accuracy'])
+history=model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, verbose=2,validation_split=0.33)
+model.summary()
+plt.plot(history.history['loss'], label='train')
+plt.legend('train')
+plt.plot(history.history['val_loss'], label='test')
+plt.legend('validation')
+plt.show()
+plt.savefig('损失')
 
-model.fit(X_train, Y_train, batch_size=16, nb_epoch=10)
-score = model.evaluate(X_test, Y_test, batch_size=16)
+
+
+
