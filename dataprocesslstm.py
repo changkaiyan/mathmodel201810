@@ -5,7 +5,6 @@ from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers import LSTM
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import mean_squared_error
 import numpy as np
 look_back=2
 epochs=10
@@ -47,6 +46,7 @@ plt.plot(history.history['loss'], label='train')
 plt.legend('train')
 plt.plot(history.history['val_loss'], label='test')
 plt.legend('validation')
+plt.title('Loss')
 plt.show()
 plt.savefig('损失1-10')
 
