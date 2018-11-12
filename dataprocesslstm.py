@@ -1,45 +1,74 @@
 from keras.models import Sequential
-from keras.layers import LSTM, Dense
-from keras.datasets import mnist
-from keras.utils import np_utils
-from keras import initializations
+from keras.layers import Dense, Dropout, Activation
+from keras.layers import Embedding
+from keras.layers import LSTM
 
-def init_weights(shape, name=None):return initializations.normal(shape, scale=0.01, name=name)
-from keras.utils.visualize_util import plot
-# Hyper parameters
-batch_size = 128
-nb_epoch = 10
-
-# Parameters for MNIST dataset
-img_rows, img_cols = 28, 28
-nb_classes = 10
-
-# Parameters for LSTM network
-nb_lstm_outputs = 30
-nb_time_steps = img_rows
-dim_input_vector = img_cols
-# Load MNIST dataset
-(X_train, y_train), (X_test, y_test) = mnist.load_data()
-print('X_train original shape:', X_train.shape)
-input_shape = (nb_time_steps, dim_input_vector)
-
-X_train = X_train.astype('float32') / 255.
-X_test = X_test.astype('float32') / 255.
-Y_train = np_utils.to_categorical(y_train, nb_classes)
-Y_test = np_utils.to_categorical(y_test, nb_classes)
-
-print('X_train shape:', X_train.shape)
-print(X_train.shape[0], 'train samples')
-print(X_test.shape[0], 'test samples')
-# Build LSTM network
 model = Sequential()
-model.add(LSTM(nb_lstm_outputs, input_shape=input_shape))
-model.add(Dense(nb_classes, activation='softmax', init=init_weights))
-model.summary()
-model.compile(optimizer='rmsprop', loss='categorical_crossentropy',metrics=['accuracy'])
-history = model.fit(X_train, Y_train, nb_epoch=nb_epoch,
-batch_size=batch_size, shuffle=True, verbose=1)
-score = model.evaluate(X_test, Y_test, verbose=1)
-print('Test score:', score[0])
-print('Test accuracy:', score[1])
+model.add(Embedding(max_features, 256, input_length=maxlen))
+model.add(LSTM(output_dim=128, activation='sigmoid', inner_activation='hard_sigmoid'))
+model.add(Dropout(0.5))
+model.add(Dense(1))
+model.add(Activation('sigmoid'))
 
+model.compile(loss='binary_crossentropy',
+              optimizer='rmsprop',
+              metrics=['accuracy'])
+
+model.fit(X_train, Y_train, batch_size=16, nb_epoch=10)
+score = model.evaluate(X_test, Y_test, batch_size=16)
+#---------------------------------------------------------------------------
+max_caption_len = 16
+vocab_size = 10000
+
+# first, let's define an image model that
+# will encode pictures into 128-dimensional vectors.
+# it should be initialized with pre-trained weights.
+image_model = Sequential()
+image_model.add(Convolution2D(32, 3, 3, border_mode='valid', input_shape=(3, 100, 100)))
+image_model.add(Activation('relu'))
+image_model.add(Convolution2D(32, 3, 3))
+image_model.add(Activation('relu'))
+image_model.add(MaxPooling2D(pool_size=(2, 2)))
+
+image_model.add(Convolution2D(64, 3, 3, border_mode='valid'))
+image_model.add(Activation('relu'))
+image_model.add(Convolution2D(64, 3, 3))
+image_model.add(Activation('relu'))
+image_model.add(MaxPooling2D(pool_size=(2, 2)))
+
+image_model.add(Flatten())
+image_model.add(Dense(128))
+
+# let's load the weights from a save file.
+image_model.load_weights('weight_file.h5')
+
+# next, let's define a RNN model that encodes sequences of words
+# into sequences of 128-dimensional word vectors.
+language_model = Sequential()
+language_model.add(Embedding(vocab_size, 256, input_length=max_caption_len))
+language_model.add(GRU(output_dim=128, return_sequences=True))
+language_model.add(TimeDistributed(Dense(128))
+
+# let's repeat the image vector to turn it into a sequence.
+image_model.add(RepeatVector(max_caption_len))
+
+# the output of both models will be tensors of shape (samples, max_caption_len, 128).
+# let's concatenate these 2 vector sequences.
+model = Sequential()
+model.add(Merge([image_model, language_model], mode='concat', concat_axis=-1))
+# let's encode this vector sequence into a single vector
+model.add(GRU(256, return_sequences=False))
+# which will be used to compute a probability
+# distribution over what the next word in the caption should be!
+model.add(Dense(vocab_size))
+model.add(Activation('softmax'))
+
+model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
+
+# "images" is a numpy float array of shape (nb_samples, nb_channels=3, width, height).
+# "captions" is a numpy integer array of shape (nb_samples, max_caption_len)
+# containing word index sequences representing partial captions.
+# "next_words" is a numpy float array of shape (nb_samples, vocab_size)
+# containing a categorical encoding (0s and 1s) of the next word in the corresponding
+# partial caption.
+model.fit([images, partial_captions], next_words, batch_size=16, nb_epoch=100)
