@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import scipy as sci
 raw_data=pd.read_csv("datar.csv")
 temp=set(raw_data['icon'])
 print(temp)
