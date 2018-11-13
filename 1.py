@@ -19,10 +19,4 @@ raw_data.sort_values(by="time")
 raw_data.to_csv('datanoraw.csv',index=False)
 sns.pairplot(raw_data,diag_kind='kde')
 plt.savefig('datasetprocessingpairplot1')
-
-for i in raw_data.columns:
-    for j in raw_data.columns:
-        sns.boxplot(x=str(i), y=str(j), data=raw_data)
-        plt.savefig("箱子"+i+j)
-
 raw_data
