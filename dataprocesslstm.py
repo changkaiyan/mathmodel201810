@@ -66,13 +66,7 @@ plt.legend('validation')
 plt.title('Loss')
 plt.show()
 plt.savefig('loss')
-plt.plot(history.history['acc'], label='train')
-plt.legend('train')
-plt.plot(history.history['val_acc'], label='validation')
-plt.legend('validation')
-plt.title('Acc')
-plt.show()
-plt.savefig('acc')
+
 
 
 
